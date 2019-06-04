@@ -1,7 +1,12 @@
 package com.example.mymapsapps;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.view.View;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -12,6 +17,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
+    private static final int MY_REQUEST_INT = 177;
     private GoogleMap mMap;
 
     @Override
@@ -42,6 +48,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         LatLng SanDiego = new LatLng(32.7157, -117.1611);
         mMap.addMarker(new MarkerOptions().position(SanDiego).title("Born Here"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(SanDiego));
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
+                requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, MY_REQUEST_INT);
+            }
+            return;
+        }
+        else {
+            mMap.setMyLocationEnabled(true);
+        }
+    }
+    public void ChangeView(View view){
+        if(mMap.getMapType() == 1){
+            mMap.setMapType(2);
+        }
+        else{
+            mMap.setMapType(1);
+        }
 
     }
 }
