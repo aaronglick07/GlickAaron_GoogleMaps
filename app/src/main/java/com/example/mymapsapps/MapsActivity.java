@@ -1,4 +1,4 @@
-package com.example.mymapsapps;
+package com.example.mymapsapp;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -7,7 +7,6 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.location.LocationProvider;
-import android.os.Build;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
@@ -27,16 +26,17 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
-    private static final int MY_REQUEST_INT = 177;
     private GoogleMap mMap;
     private LocationManager locationManager;
     private boolean isGPSEnabled = false;
     private boolean isNetworkEnabled = false;
-    private static final long MIN_TIME_BW_UPDATES = 1000 * 5;
+    private static final int MIN_TIME_BW_UPDATES = 1000 * 5;
     private static final float MIN_DISTANCE_CHANGE_FOR_UPDATE = 0.0f;
     private Location myLocation;
-    private double latitude, longitude;
-    private static final int MY_LOC_ZOOM_FACTOR = 17;
+    private double longitude;
+    private double latitude;
+    private static final float MY_LOCATION_ZOOM_FACTOR = 17f;
+    private boolean isLocating = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,48 +62,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        // Add a marker in San Diego and move the camera
         LatLng SanDiego = new LatLng(32.7157, -117.1611);
-        mMap.addMarker(new MarkerOptions().position(SanDiego).title("Born Here"));
+        mMap.addMarker(new MarkerOptions().position(SanDiego).title("Born here"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(SanDiego));
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, MY_REQUEST_INT);
-            }
-            return;
-        } else {
-            mMap.setMyLocationEnabled(true);
-        }
+        setLocationEnabled();
     }
-
-    public void ChangeView(View view) {
-        if (mMap.getMapType() == 1) {
-            mMap.setMapType(2);
-        } else {
-            mMap.setMapType(1);
-        }
-
-    }
-
     public void getLocation() {
         try {
             locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-
             //get GPS status
             isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-            if (isGPSEnabled) Log.d("myMaps", "getLocation: GPS is enabled");
-
-            //get network status
+            if (isGPSEnabled) Log.d("MyMaps", "getLocation; GPS is enabled");
+            // get network status (cell tower + wifi) Look for network provider in LocationManager
             isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-            if (isNetworkEnabled) Log.d("myMaps", "getLocation: Network is enabled");
-
-            if (!isGPSEnabled && !isNetworkEnabled) {
-                Log.d("MyMap", "GetLocation: No provider is enabled");
-            } else {
+            if(isNetworkEnabled) Log.d("MyMaps", "getLocation: Network Enabled");
+            // add code here to update isNetworkEnabled and output Log.d
+            if (!isGPSEnabled && !isNetworkEnabled)
+                Log.d("MyMaps", "getLocation: No provider enabled");
+            else {
                 if (isNetworkEnabled) {
-                    Log.d("MyMap", "GetLocation: network is enabled");
+                    // add Log.d
+                    Log.d("MyMaps", "Network enabled passed");
                     if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                         // TODO: Consider calling
                         //    ActivityCompat#requestPermissions
@@ -114,16 +94,33 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         // for ActivityCompat#requestPermissions for more details.
                         return;
                     }
-                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATE, locationListenerNetwork);
+                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
+                            MIN_TIME_BW_UPDATES,
+                            MIN_DISTANCE_CHANGE_FOR_UPDATE,
+                            locationListenerNetwork);
                 }
                 if (isGPSEnabled) {
-                    Log.d("MyMap", "GetLocation: GPS is enabled");
-
-                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATE, locationListenerGPS);
+                    // add Log.d
+                    Log.d("MyMaps", "GPS enabled passed");
+                    if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        // TODO: Consider calling
+                        //    ActivityCompat#requestPermissions
+                        // here to request the missing permissions, and then overriding
+                        //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                        //                                          int[] grantResults)
+                        // to handle the case where the user grants the permission. See the documentation
+                        // for ActivityCompat#requestPermissions for more details.
+                        return;
+                    }
+                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+                            MIN_TIME_BW_UPDATES,
+                            MIN_DISTANCE_CHANGE_FOR_UPDATE,
+                            locationListenerGPS);
                 }
             }
+
         } catch (Exception e) {
-            Log.d("MyMaps", "Caught exception in getLocation");
+            //put log.d
             e.printStackTrace();
         }
     }
@@ -132,7 +129,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     LocationListener locationListenerNetwork = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
-            Log.d("MyMaps", "Changing location network");
+            //put log.d
             dropAmarker(LocationManager.NETWORK_PROVIDER);
             if (ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 // TODO: Consider calling
@@ -144,7 +141,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 // for ActivityCompat#requestPermissions for more details.
                 return;
             }
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATE, this);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
+                    MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATE, this);
         }
 
         @Override
@@ -162,12 +160,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         }
     };
-
-
     LocationListener locationListenerGPS = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
-            Log.d("MyMaps", "Changing location GPS");
+            //add log.d
             dropAmarker(LocationManager.GPS_PROVIDER);
             locationManager.removeUpdates(locationListenerNetwork);
         }
@@ -176,12 +172,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         public void onStatusChanged(String provider, int status, Bundle extras) {
             switch (status) {
                 case LocationProvider.AVAILABLE:
-                    Log.d("MyMaps", "GPS onstatus- Available");
-                    Toast.makeText(MapsActivity.this, "GPS onstatus- Available", Toast.LENGTH_SHORT).show();
+                    //log.d
+                    Toast.makeText(MapsActivity.this, "LocationListenerGPS: Available", Toast.LENGTH_SHORT).show();
                     break;
                 case LocationProvider.OUT_OF_SERVICE:
-                    Log.d("MyMaps", "GPS onstatus- Out of service");
-                    Toast.makeText(MapsActivity.this, "GPS onstatus- out of service", Toast.LENGTH_SHORT).show();
+                    //log.d
                     if (ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                         // TODO: Consider calling
                         //    ActivityCompat#requestPermissions
@@ -192,18 +187,30 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         // for ActivityCompat#requestPermissions for more details.
                         return;
                     }
-                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATE, locationListenerNetwork);
+                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
+                            MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATE, locationListenerNetwork);
                     break;
                 case LocationProvider.TEMPORARILY_UNAVAILABLE:
-                    Log.d("MyMaps", "GPS onstatus- Temporarily unavailable");
-                    Toast.makeText(MapsActivity.this, "GPS onstatus- temporarily unavailabe", Toast.LENGTH_SHORT).show();
-                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATE, locationListenerNetwork);
+                    //log.d
+                    if (ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        // TODO: Consider calling
+                        //    ActivityCompat#requestPermissions
+                        // here to request the missing permissions, and then overriding
+                        //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                        //                                          int[] grantResults)
+                        // to handle the case where the user grants the permission. See the documentation
+                        // for ActivityCompat#requestPermissions for more details.
+                        return;
+                    }
+                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
+                            MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATE, locationListenerNetwork);
                     break;
                 default:
+                    //log.d
                     break;
 
-
             }
+
         }
 
         @Override
@@ -213,11 +220,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         @Override
         public void onProviderDisabled(String provider) {
-
         }
     };
 
+
     public void dropAmarker(String provider) {
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
             //    ActivityCompat#requestPermissions
@@ -234,18 +242,118 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             longitude = myLocation.getLongitude();
         }
         LatLng userLocation = null;
-        userLocation = new LatLng(myLocation.getLatitude(),myLocation.getLongitude());
+        if(myLocation == null){
+            Toast.makeText(this,"dropAmarker: myLocation is null- can't drop a marker",Toast.LENGTH_SHORT).show();
+        }else{
+            userLocation = new LatLng(myLocation.getLatitude(),myLocation.getLongitude());
+            CameraUpdate update = CameraUpdateFactory.newLatLngZoom(userLocation, MY_LOCATION_ZOOM_FACTOR);
 
-        CameraUpdate update = CameraUpdateFactory.newLatLngZoom(userLocation, MY_LOC_ZOOM_FACTOR);
+            if(provider == LocationManager.GPS_PROVIDER){
+                //add circles for the marker with 2 outer rings
+                Circle circle = mMap.addCircle(new CircleOptions()
+                        .center(userLocation)
+                        .radius(1)
+                        .strokeColor(Color.RED)
+                        .strokeWidth(2)
+                        .fillColor(Color.RED));
+                Circle circle2 = mMap.addCircle((new CircleOptions().
+                        center(userLocation)
+                        .radius(2)
+                        .strokeColor(Color.RED)
+                        .strokeWidth(2)));
+                Circle circle3 = mMap.addCircle((new CircleOptions().center(userLocation)
+                        .radius(3)
+                        .strokeColor(Color.RED)
+                        .strokeWidth(2)));
+                // add outer ring 1
+                //add outer ring 2
+            }
+            else{
+                Circle circle = mMap.addCircle(new CircleOptions()
+                        .center(userLocation)
+                        .radius(1)
+                        .strokeColor(Color.BLUE)
+                        .strokeWidth(2)
+                        .fillColor(Color.BLUE));
+                Circle circle2 = mMap.addCircle(new CircleOptions()
+                        .center(userLocation)
+                        .radius(2)
+                        .strokeColor(Color.BLUE)
+                        .strokeWidth(2));
+                Circle circle3 = mMap.addCircle(new CircleOptions()
+                        .center(userLocation)
+                        .radius(3)
+                        .strokeColor(Color.BLUE)
+                        .strokeWidth(2));
+            }
 
-        if(provider.equals(LocationManager.GPS_PROVIDER)){
-            Circle circle = mMap.addCircle(new CircleOptions()
-                .center(userLocation).radius(1).strokeColor(Color.RED).strokeWidth(2).fillColor(Color.RED));
+            mMap.animateCamera(update);
+
+        }
+
+    }//end dropAmarker
+
+
+
+    //TODO Write method trackMYLocation(View v) ---
+    // call getLocation if currently not tracking
+    // or turn off tracking if currently enabled (removeUpdates for both listeners)
+    public void trackMyLocation(View view){
+        if(!isLocating){
+            getLocation();
+            isLocating = true;
+        }else{
+            locationManager.removeUpdates(locationListenerGPS);
+            locationManager.removeUpdates(locationListenerNetwork);
+            isLocating = false;
+        }
+    }
+
+
+    //TODO Write method clearMarkers(view v) ---
+    // clear all markers from map
+    public void clearMarkers(View view){
+        mMap.clear();
+    }
+    public void setLocationEnabled(){
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+
+            String[] locationPermissions = {Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION};
+
+            ActivityCompat.requestPermissions(this, locationPermissions, 0);
+            return;
+        }
+        mMap.setMyLocationEnabled(true);
+
+    }
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults){
+        if(grantResults.length >0){
+            for(int i:grantResults){
+                if(i != PackageManager.PERMISSION_GRANTED){
+                    Log.d("MyMaps","Location permission denied");
+                    break;
+                }
+            }
         }
         else{
-            Circle circle = mMap.addCircle(new CircleOptions()
-                    .center(userLocation).radius(1).strokeColor(Color.BLUE).strokeWidth(2).fillColor(Color.BLUE));
+            Log.d("MyMaps", "Location permission denied");
         }
-        mMap.animateCamera(update);
+        setLocationEnabled();
+    }
+    public void changeView(View view){
+        if(mMap.getMapType() == GoogleMap.MAP_TYPE_NORMAL){
+            mMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+        }
+        else if(mMap.getMapType() == GoogleMap.MAP_TYPE_SATELLITE){
+            mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+        }
     }
 }
